@@ -32,6 +32,8 @@
 #include<string>
 #include<vector>
 #include "Neuron.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/stringbuffer.h"
 
 // NeuralNet class is responsible for the organization of neurons and facilitating intersynaptic communication.
 // It also provides the external interface so that host system can generate a function approximation using only
@@ -62,11 +64,11 @@ class NeuralNet {
       return a->layer_idx() > b->layer_idx();
     }
   };
-
+  
   //NeuralNet(): construct a new NeuralNet
   // n_input: number of neurons in input layer
-  // n_input: number of neurons in hidden layer
-  // n_input: number of neurons in output layer 
+  // n_hidden: number of neurons in hidden layer
+  // n_output: number of neurons in output layer 
   // activation: the activation function used for node delta calculation
   // activation_p: the derivative of the activation function used for gradient decent
   // start_weights: optional if you wish to provide your own random or pre-trained starting weight values.
@@ -74,12 +76,52 @@ class NeuralNet {
   NeuralNet (int n_input, int n_hidden, int n_output, float (*activation)(float), float (*activation_p)(float), float *start_weights);
   virtual ~NeuralNet();
   // training_data: inputs followed by ideal outputs per row, rows are joined to form a 1d array of training_data.
-  // batch_size: number of rows in training data
+  // batch_size: number of input+output pairs in training data
   // learning_algo: kLearningAlgorithmsResilientProp and kLearningAlgorithmsBackProp currently supported.
   float Train(float training_data[], int batch_size,  int learning_algo);
   // inputs: array of approximated functions inputs
   // outputs: results of approximated function with supplied inputs
   void Compute(float inputs[], float* outputs);
+  // Returns pretty formatted string JSON representation of the neural network in present state.
+  const char * ToPrettyJSON() {
+    rapidjson::StringBuffer *buffer = new rapidjson::StringBuffer();
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(*buffer);
+    this->ToJSON(writer);
+    return buffer->GetString();
+  }
+  // Returns string JSON representation of the neural network in present state.
+  const char * ToJSON() {
+    rapidjson::StringBuffer *buffer = new rapidjson::StringBuffer();
+    rapidjson::Writer<rapidjson::StringBuffer> writer(*buffer);
+    this->ToJSON(writer);
+    return buffer->GetString();
+  }
+  // Streams to rapidjson writer, the JSON representation of the neural network in present state.
+  template <typename Writer>
+  void ToJSON(Writer& writer) const {
+    writer.StartObject();
+    writer.String(("inputNeurons"));
+    writer.StartArray();
+    for (std::vector<Neuron*>::const_iterator neuronItr = input_neurons_.begin(); neuronItr != input_neurons_.end(); ++neuronItr)
+    (*neuronItr)->ToJSON(writer);
+    writer.EndArray();
+    writer.String(("biasNeurons"));
+    writer.StartArray();
+    for (std::vector<Neuron*>::const_iterator neuronItr = bias_neurons_.begin(); neuronItr != bias_neurons_.end(); ++neuronItr)
+    (*neuronItr)->ToJSON(writer);
+    writer.EndArray();
+    writer.String(("hiddenNeurons"));
+    writer.StartArray();
+    for (std::vector<Neuron*>::const_iterator neuronItr = hidden_neurons_.begin(); neuronItr != hidden_neurons_.end(); ++neuronItr)
+    (*neuronItr)->ToJSON(writer);
+    writer.EndArray();
+    writer.String(("outputNeurons"));
+    writer.StartArray();
+    for (std::vector<Neuron*>::const_iterator neuronItr = output_neurons_.begin(); neuronItr != output_neurons_.end(); ++neuronItr)
+    (*neuronItr)->ToJSON(writer);
+    writer.EndArray();
+    writer.EndObject();
+  }
   // this is the number of training iterations that were required to converge
   int epoch() const { return epoch_; }
 
@@ -95,6 +137,8 @@ private:
   int n_hidden_;
   int n_output_;
   int epoch_;
+  float max_float_training_;
+  float min_float_training_;
 };
 
 } //namespace neuralplex

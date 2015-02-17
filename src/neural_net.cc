@@ -37,6 +37,7 @@
 #include <cfloat>
 #include "neural_net.h"
 #include "neural_net_constants.h"
+#include "rapidjson/filestream.h"
 
 namespace neuralplex {
 
@@ -52,8 +53,9 @@ NeuralNet::NeuralNet (int n_input, int n_hidden, int n_output, float (*activatio
     float start_weights[n_weights];
     for(int x = 0; x < n_weights; x++) start_weights[x] = distribution(mt);
     BuildNetwork(activation, activation_p, &start_weights[0]);
+    max_float_training_ = 0.0f;
   } catch (std::exception& e) {
-    std::cout << e.what() << std::endl;
+    std::cerr << e.what() << std::endl;
   }
 }
 
@@ -64,7 +66,7 @@ NeuralNet::NeuralNet (int n_input, int n_hidden, int n_output, float (*activatio
     n_output_ = n_output;
     BuildNetwork(activation, activation_p, start_weights);
   } catch (std::exception& e) {
-    std::cout << e.what() << std::endl;
+    std::cerr << e.what() << std::endl;
   }
 }
 
@@ -73,33 +75,48 @@ NeuralNet::~NeuralNet() { }
 float NeuralNet::Train(float training_data[], int batch_size, int learning_algo) {
   float mse = 1.0f;
   epoch_ = 0;
+  max_float_training_ = FLT_MIN;
+  min_float_training_ = FLT_MAX;
+  for (int row = 0; row < batch_size * (n_input_+n_output_); row += (n_input_ + n_output_)) {
+    for (int x = 0; x < n_input_; x++) {
+      if (training_data[row+x] > max_float_training_) {
+//        std::cout << training_data[row+x] << std::endl;
+          max_float_training_ = training_data[row+x];
+}
+      if (training_data[row+x] < min_float_training_) min_float_training_ = training_data[row+x];
+    }
+  }
+  //std::cout << "MAX1 " << min_float_training_ << std::endl;
+
   NormalizeInputs(&training_data[0], batch_size);
   while (mse > kNeuralLearningThreshold && epoch_ < kNeuralLearningMaxEpoch) {
     mse = 0.0f;
-    for(int row = 0; row < batch_size*(n_input_+n_output_); row+=(n_input_ + n_output_)) {
+    for(int row = 0; row < batch_size*(n_input_+n_output_); row += (n_input_ + n_output_)) {
       sort( neurons_.begin(), neurons_.end(), ForwardPropagation() );
       for(int x = 0; x < n_input_; x++) input_neurons_[x]->set_input(training_data[row+x]);
       for(int x = 0; x < n_output_; x++) output_neurons_[x]->set_ideal(training_data[row+n_input_+x]);
       for(std::vector<Neuron*>::iterator it = neurons_.begin(); it != neurons_.end(); ++it) (*it)->Forward();
       sort( neurons_.begin(), neurons_.end(), BackPropagation() );
       for(std::vector<Neuron*>::iterator it = neurons_.begin(); it != neurons_.end(); ++it) (*it)->Backward();
-      for(std::vector<Neuron*>::iterator it = output_neurons_.begin(); it != output_neurons_.end(); ++it) mse += pow((*it)->error(),2);
+      for(std::vector<Neuron*>::iterator it = output_neurons_.begin(); it != output_neurons_.end(); ++it) mse += pow((*it)->error(),2)/n_output_;
     }
     for(std::vector<Neuron*>::iterator it = neurons_.begin(); it != neurons_.end(); ++it) (*it)->Learn(learning_algo);
     mse /= batch_size;
+    std::cout << epoch_ << " " << "MSE: " << mse << std::endl;
     epoch_++;
   }
   return mse;
 }
 
-void NeuralNet::Compute (float inputs[], float* outputs) {
+void NeuralNet::Compute(float inputs[], float* outputs) {
   try {
+    NormalizeInputs(inputs, 1);
     sort( neurons_.begin(), neurons_.end(), ForwardPropagation() );
-    for(int x = 0; x < n_input_; x++) input_neurons_[x]->set_input(inputs[x]);
+    for(int x = 0; x < n_input_; x++) {input_neurons_[x]->set_input(inputs[x]);}
     for(std::vector<Neuron*>::iterator it = neurons_.begin(); it != neurons_.end(); ++it) (*it)->Forward();
     for(int x = 0; x < n_output_; x++) outputs[x] = output_neurons_[x]->output();
   } catch (std::exception& e) {
-    std::cout << e.what() << std::endl;
+    std::cerr << e.what() << std::endl;
   }
 }
 
@@ -133,21 +150,17 @@ void NeuralNet::BuildNetwork(float (*activation)(float), float (*activation_p)(f
       input_neurons_.push_back(input_neuron);
     }
   } catch (std::exception& e) {
-    std::cout << e.what() << std::endl;
+    std::cerr << e.what() << std::endl;
   }
 }
 
 void NeuralNet::NormalizeInputs(float* training_data, int batch_size) {
-  float max = FLT_MIN, min = FLT_MAX;
-  for (int row = 0; row < batch_size * (n_input_+n_output_); row += (n_input_ + n_output_)) {
-    for (int x = 0; x < n_input_; x++) {
-      if (training_data[row+x] > max) max = training_data[row+x];
-      if (training_data[row+x] < min) min = training_data[row+x];
-    }
-  }
+ // std::cout << max_float_training_ << std::endl;
+ //std::cout << "MAX2 " << min_float_training_ << std::endl;
+
   for (int row = 0; row < batch_size*(n_input_+n_output_); row += (n_input_+n_output_)) {
-    for (int x = 0; x < n_input_; x++) training_data[row+x] = training_data[row+x] * ( kNeuralInputRange/(max-min)  ) + 
-      (kNeuralInputLower - (min*(kNeuralInputRange / (max-min))));
+    for (int x = 0; x < n_input_; x++) training_data[row+x] = (float)training_data[row+x] * ( kNeuralInputRange/(max_float_training_-min_float_training_)  ) + 
+      (kNeuralInputLower - (min_float_training_*(kNeuralInputRange / (max_float_training_-min_float_training_))));
   }
 }
 } //namespace neuralplex

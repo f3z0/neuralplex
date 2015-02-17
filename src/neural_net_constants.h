@@ -40,13 +40,14 @@ enum LearningAlgorithms {
   kLearningAlgorithmsResilientProp
 };
 
+//const unsigned int kMaxBatchSize = 20;
 const float kNeuralInputUpper = 1.0f;
 const float kNeuralInputLower = -1.0f;
 const float kNeuralInputRange = kNeuralInputUpper - kNeuralInputLower;
-const int kNeuralLearningMaxEpoch = 400;
+const int kNeuralLearningMaxEpoch = 1000000;
 const float kBackPropLearningRate = 0.7;
 const float kBackPropMomentum = 0.7;
-const float kNeuralLearningThreshold = 0.01;
+const float kNeuralLearningThreshold = 0.03;
 const float kResilientPropInitUpdateVal = 0.1;
 const float kResilientPropDeltaMax = 50.0;
 const float kResilientPropUpdateMin = 1e-6;

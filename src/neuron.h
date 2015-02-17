@@ -31,6 +31,9 @@
 #include<stdlib.h>
 #include<string>
 #include<vector>
+#include "rapidjson/filestream.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/stringbuffer.h"
 
 namespace neuralplex {
 
@@ -79,7 +82,61 @@ class Neuron {
   void set_layer_idx(int layer_idx) { layer_idx_ = layer_idx; }
   std::vector <synapse_t>& parents()  { return parents_; }
   std::vector <synapse_t>& children()  { return children_; }
-
+  // Returns pretty formatted string JSON representation of the neuron in present state.
+  const char * ToPrettyJSON() {
+    rapidjson::StringBuffer *buffer = new rapidjson::StringBuffer();
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(*buffer);
+    this->ToJSON(writer);
+    return buffer->GetString();
+  }
+  // Returns string JSON representation of the neuron in present state.
+  const char * ToJSON() {
+    rapidjson::StringBuffer *buffer = new rapidjson::StringBuffer();
+    rapidjson::Writer<rapidjson::StringBuffer> writer(*buffer);
+    this->ToJSON(writer);
+    return buffer->GetString();
+  }
+  // Streams to rapidjson writer, the JSON representation of the neuron in present state.
+  template <typename Writer>
+  void ToJSON(Writer& writer) const {
+    writer.StartObject();
+    writer.String(("name"));
+    writer.String(name_);
+    writer.String("output");
+    writer.Double(output_);
+    writer.String("summation");
+    writer.Double(summation_);
+    writer.String("error");
+    writer.Double(error_);
+    writer.String("delta");
+    writer.Double(delta_);
+    writer.String("layer");
+    writer.Int(layer_idx_);
+    writer.String(("parents"));
+    writer.StartArray();
+    for (std::vector<synapse_t>::const_iterator synapseItr = parents_.begin(); synapseItr != parents_.end(); ++synapseItr) {
+      writer.StartObject();
+      writer.String(("weight"));
+      writer.Double(synapseItr->weight);
+      writer.String(("neuron"));
+      writer.String(synapseItr->parent->name());
+      writer.EndObject();
+    }
+    writer.EndArray();
+    writer.String(("children"));
+    writer.StartArray();
+    for (std::vector<synapse_t>::const_iterator synapseItr = children_.begin(); synapseItr != children_.end(); ++synapseItr) {
+      writer.StartObject();
+      writer.String(("weight"));
+      writer.Double(synapseItr->weight);
+      writer.String(("neuron"));
+      writer.String(synapseItr->child->name());
+      writer.EndObject();
+    }
+    writer.EndArray();
+    writer.EndObject();
+  }
+  
  private:
   void LearnBackProp();
   void LearnRProp();

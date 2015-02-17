@@ -42,12 +42,12 @@ Neuron::Neuron(std::string name, float (*activation)(float), float (*activation_
   name_ = name;
   activation_ = activation;
   activation_prime_ = activation_prime;
-  summation_ = 0.0;
+  summation_ = 0.0f;
   layer_idx_ = 0;
   has_input_ = false;
   has_ideal_ = false;
-  input_ = 0;
-  ideal_ = 0;
+  input_ = 0.0f;
+  ideal_ = 0.0f;
   delta_ = 0.0f;
   error_ = 0.0f;
   output_ = 0.0f;

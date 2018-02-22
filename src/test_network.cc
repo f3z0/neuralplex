@@ -169,11 +169,11 @@ int main () {
   //test_data_arr = (float*) malloc(n_all_rows * n_fields * n_field_max_length * sizeof(float));
 
   for (unsigned int i = 0; i < n_all_rows; i++) {
-    std::vector<float> poo;
+    std::vector<float> init_data;
     for (unsigned int j = 0; j < (n_fields*n_field_max_length); j++) {
-      poo.push_back(0.0f);
+      init_data.push_back(0.0f);
     }
-    test_data_arr.push_back(poo);
+    test_data_arr.push_back(init_data);
   }
   k = 0;
 
